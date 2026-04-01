@@ -42,34 +42,32 @@ function formatToErpNext() {
 
   const startRow = 2;
   const startCol = 1;
-  const numCols = 21; // A → U
   const lastRow = sourceSheet.getLastRow();
+  const lastCol = sourceSheet.getLastColumn(); // ← use full width
 
   if (lastRow < startRow) {
     ui.alert("No data to process.");
     return;
   }
 
-  // Read header separately
-  const headerRange = sourceSheet.getRange(1, startCol, 1, numCols);
-  const headerData = headerRange.getValues();
+  // Read header separately (full width)
+  const headerData = sourceSheet.getRange(1, startCol, 1, lastCol).getValues();
 
-  // Read body data
-  const dataRange = sourceSheet.getRange(
-    startRow,
-    startCol,
-    lastRow - startRow + 1,
-    numCols
-  );
-  const data = dataRange.getValues();
+  // Read body data (full width)
+  const data = sourceSheet
+    .getRange(startRow, startCol, lastRow - startRow + 1, lastCol)
+    .getValues();
 
-  // Process bottom → top in memory
+  // Process bottom → top: blank cols A–U only for duplicate invoice rows
   for (let i = data.length - 1; i > 0; i--) {
-    const currentID = data[i][1];     // Column B
+    const currentID = data[i][1];   // Column B
     const previousID = data[i - 1][1];
 
     if (currentID !== "" && currentID === previousID) {
-      data[i] = new Array(numCols).fill("");
+      // Only blank out columns A–U (indices 0–20), leave V+ untouched
+      for (let c = 0; c < 21; c++) {
+        data[i][c] = "";
+      }
     }
   }
 
@@ -81,13 +79,15 @@ function formatToErpNext() {
     targetSheet.clear();
   }
 
-  // Write header
-  targetSheet.getRange(1, startCol, 1, numCols).setValues(headerData);
+  // Write header (full width)
+  targetSheet.getRange(1, startCol, 1, lastCol).setValues(headerData);
 
-  // Write processed data
-  targetSheet.getRange(startRow, startCol, data.length, numCols).setValues(data);
+  // Write processed data (full width)
+  targetSheet
+    .getRange(startRow, startCol, data.length, lastCol)
+    .setValues(data);
 
-  targetSheet.autoResizeColumns(startCol, numCols);
+  targetSheet.autoResizeColumns(startCol, lastCol);
 
   ui.alert(`Formatted data created in: ${targetSheetName}`);
 }
